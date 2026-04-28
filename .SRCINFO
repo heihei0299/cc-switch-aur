@@ -1,11 +1,10 @@
 pkgbase = cc-switch
 	pkgdesc = All-in-One assistant tool for Claude Code, Codex, OpenCode, openclaw & Gemini CLI
 	pkgver = 3.14.1
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/farion1231/cc-switch
 	arch = x86_64
 	license = MIT
-	makedepends = cargo
 	makedepends = cargo-tauri
 	makedepends = nodejs
 	makedepends = pnpm

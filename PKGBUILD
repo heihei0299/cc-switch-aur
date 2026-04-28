@@ -2,7 +2,7 @@
 
 pkgname=cc-switch
 pkgver=3.14.1
-pkgrel=1
+pkgrel=2
 pkgdesc='All-in-One assistant tool for Claude Code, Codex, OpenCode, openclaw & Gemini CLI'
 arch=('x86_64')
 url='https://github.com/farion1231/cc-switch'
@@ -20,7 +20,6 @@ depends=(
   'webkit2gtk-4.1'
 )
 makedepends=(
-  'cargo'
   'cargo-tauri'
   'nodejs'
   'pnpm'
