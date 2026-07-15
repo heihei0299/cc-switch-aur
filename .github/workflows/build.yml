@@ -1,11 +1,16 @@
-# cc-switch AUR 包构建与校验 workflow
-# 推送 v* tag 时在 archlinux:latest 容器内运行 makepkg 构建并校验 .pkg.tar.zst
+# cc-switch AUR 包构建、校验与发布 workflow
+# 推送 v* tag 时在 archlinux:latest 容器内运行 makepkg 构建并校验 .pkg.tar.zst，
+# 校验通过后创建名为 "cc-switch <pkgver>-<pkgrel>" 的 GitHub Release 并上传包文件
 name: Build Arch Package
 
 on:
   push:
     tags:
       - 'v*'
+
+# 默认只读权限；release job 单独提升 contents:write
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -61,3 +66,36 @@ jobs:
           name: arch-package
           path: '*.pkg.tar.zst'
           if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: arch-package
+          path: artifact
+
+      - name: Parse pkgver/pkgrel from PKGBUILD
+        id: parse
+        # PKGBUILD 是 bash 脚本，source 后即可读取顶层变量；函数仅被定义不会执行
+        run: |
+          source PKGBUILD
+          echo "pkgver=${pkgver}" >> "$GITHUB_OUTPUT"
+          echo "pkgrel=${pkgrel}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release and upload package
+        uses: softprops/action-gh-release@v2
+        with:
+          # Release 名称形如 "cc-switch 3.17.0-1"
+          name: cc-switch ${{ steps.parse.outputs.pkgver }}-${{ steps.parse.outputs.pkgrel }}
+          tag_name: ${{ github.ref_name }}
+          files: artifact/*.pkg.tar.zst
+          fail_on_unmatched_files: true
