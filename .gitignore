@@ -1,0 +1,28 @@
+# 开发辅助文件 —— 不发布到 AUR / GitHub 仓库
+.agents/
+.opencode/
+.codegraph/
+.scratch/
+docs/
+AGENTS.md
+opencode.json
+skills-lock.json
+
+# makepkg 构建产物与工作目录
+pkg/
+src/
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+
+# makepkg 下载的上游源码 tarball（PKGBUILD source 数组中的 URL 项）
+cc-switch-*.tar.gz
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+*.swp
+*~
+.idea/
+.vscode/
