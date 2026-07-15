@@ -35,25 +35,33 @@ jobs:
           # 更新系统
           pacman -Syu --noconfirm
           # 一次性装齐 PKGBUILD 的 depends 与 makedepends（官方仓库包）
-          # cargo-tauri（AUR 包）由下一步 cargo install 替代，不引入 AUR helper
+          # libayatana-appindicator-glib 不在官方仓库，由下一步从 AUR 构建安装
           # base-devel 提供编译工具链（gcc/make/patch/pkg-config 等）
           pacman -S --noconfirm --needed \
             base-devel \
             cairo gdk-pixbuf2 glib2 gtk3 hicolor-icon-theme \
-            libayatana-appindicator-glib libsoup3 openssl pango webkit2gtk-4.1 \
+            libsoup3 openssl pango webkit2gtk-4.1 \
             nodejs pnpm rust xdg-utils \
+            cargo-tauri \
             curl git sudo
 
-      - name: Install cargo-tauri
+      - name: Build libayatana-appindicator-glib from AUR
         run: |
-          # PKGBUILD makedepends 中的 cargo-tauri 是 AUR 包，CI 中改用 cargo install
-          sudo -u builder cargo install tauri-cli --version "^2" --locked
+          # libayatana-appindicator-glib 仅在 AUR/archlinuxcn，不在官方仓库
+          # 其全部构建依赖（cmake-extras, gi-docgen, gobject-introspection, vala, glib2-devel）已在官方 core/extra
+          # 从 AUR 下载快照，以 builder 用户构建并安装，不引入 AUR helper
+          pacman -S --noconfirm --needed cmake-extras gi-docgen gobject-introspection vala glib2-devel
+          sudo -u builder bash -c '
+            cd /tmp &&
+            curl -sLO "https://aur.archlinux.org/cgit/aur.git/snapshot/libayatana-appindicator-glib.tar.gz" &&
+            tar xzf libayatana-appindicator-glib.tar.gz &&
+            cd libayatana-appindicator-glib &&
+            makepkg -si --noconfirm
+          '
 
       - name: Build package with makepkg
         run: |
-          # --nodeps: 跳过依赖校验。cargo-tauri 经 cargo install 安装而非 pacman，
-          # pacman 数据库无该包记录，默认校验会误报缺失；所有真实依赖已在上一步装齐
-          sudo -u builder makepkg --force --nodeps
+          sudo -u builder makepkg --force
 
       - name: Verify package structure
         run: |
