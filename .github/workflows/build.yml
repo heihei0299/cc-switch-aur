@@ -1,0 +1,63 @@
+# cc-switch AUR 包构建与校验 workflow
+# 推送 v* tag 时在 archlinux:latest 容器内运行 makepkg 构建并校验 .pkg.tar.zst
+name: Build Arch Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create non-root build user
+        run: |
+          # makepkg 不允许以 root 运行，创建非特权 builder 用户并赋予免密 sudo
+          useradd -m -G wheel -s /bin/bash builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+          # 将工作区交给 builder，保证 srcdir/pkgdir 属主正确
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Install build dependencies
+        run: |
+          # 更新系统
+          pacman -Syu --noconfirm
+          # 一次性装齐 PKGBUILD 的 depends 与 makedepends（官方仓库包）
+          # cargo-tauri（AUR 包）由下一步 cargo install 替代，不引入 AUR helper
+          # base-devel 提供编译工具链（gcc/make/patch/pkg-config 等）
+          pacman -S --noconfirm --needed \
+            base-devel \
+            cairo gdk-pixbuf2 glib2 gtk3 hicolor-icon-theme \
+            libayatana-appindicator-glib libsoup3 openssl pango webkit2gtk-4.1 \
+            nodejs pnpm rust xdg-utils \
+            curl git sudo
+
+      - name: Install cargo-tauri
+        run: |
+          # PKGBUILD makedepends 中的 cargo-tauri 是 AUR 包，CI 中改用 cargo install
+          sudo -u builder cargo install tauri-cli --version "^2" --locked
+
+      - name: Build package with makepkg
+        run: |
+          # --nodeps: 跳过依赖校验。cargo-tauri 经 cargo install 安装而非 pacman，
+          # pacman 数据库无该包记录，默认校验会误报缺失；所有真实依赖已在上一步装齐
+          sudo -u builder makepkg --force --nodeps
+
+      - name: Verify package structure
+        run: |
+          # pacman -Qp 解析包元信息与文件列表，退出码 0 即校验通过
+          pacman -Qp *.pkg.tar.zst
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: '*.pkg.tar.zst'
+          if-no-files-found: error
