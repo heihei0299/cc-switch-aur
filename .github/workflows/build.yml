@@ -26,6 +26,9 @@ jobs:
         run: |
           # makepkg 不允许以 root 运行，创建非特权 builder 用户并赋予免密 sudo
           useradd -m -G wheel -s /bin/bash builder
+          # archlinux 基础镜像的 /etc/sudoers 可能不含 root 条目，
+          # 补充 root 与 builder 的免密 sudo，保证后续 sudo -u builder 可用
+          echo 'root ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
           echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
           # 将工作区交给 builder，保证 srcdir/pkgdir 属主正确
           chown -R builder:builder "$GITHUB_WORKSPACE"
